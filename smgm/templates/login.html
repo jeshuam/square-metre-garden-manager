@@ -1,0 +1,13 @@
+<!doctype html>
+<h1>Login Page</h1>
+{% if current_user.is_authenticated %}
+Welcome back {{ current_user.name }}! You logged in using {{ current_user.source }}.
+
+<br />
+
+<a href="/logout">Logout</a>
+{% else %}
+<ul>
+  <li><a href="/login/facebook">Login with Facebook</a></li>
+</ul>
+{% endif %}
