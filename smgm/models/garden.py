@@ -30,7 +30,8 @@ class Plant(object):
         return dict(
             name=self.name,
             plant_date=self.plant_date.toordinal(),
-            growth_time=self._growth_time)
+            growth_time=self._growth_time,
+            harvest_date=self.harvest_date)
 
     @classmethod
     def Load(cls, json):

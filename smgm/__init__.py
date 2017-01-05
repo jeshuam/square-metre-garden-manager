@@ -14,3 +14,6 @@ app.config['STORMPATH_APPLICATION'] = 'Square Metre Garden Manager'
 stormpath_manager = StormpathManager(app)
 
 import smgm.views
+
+# APIs
+import smgm.models.garden_api
