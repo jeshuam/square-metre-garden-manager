@@ -1,0 +1,90 @@
+{% extends "_common.html" %}
+
+{% block js %}
+<script>
+$(function() {
+    // Update the number next to the range form fields (width/height).
+    $('form input[type=range]').on('input', function() {
+        $(this).next('output').text(this.value);
+    });
+
+    // On submit of the form.
+    $('form#new-garden').submit(function(e) {
+        e.preventDefault();
+
+        // Validate the data.
+        var $this = $(this);
+        var data = {
+            name: $this.find('input[name=name]').val(),
+            width: $this.find('input[name=width]').val(),
+            height: $this.find('input[name=height]').val(),
+        }
+        
+        // Send the data.
+        $.post({
+            url: '/api/garden?' + $this.serialize(),
+            data: data,
+            dataType: 'json',
+            success: function(resp) {
+                console.log(resp);
+            },
+
+            error: function(resp, status, error) {
+                console.log(resp.responseJSON.error);
+            },
+        });
+    });
+
+    // Allow deletions.
+    $('button.btn-danger').click(function(e) {
+        var $this = $(this);
+        $this.button('loading');
+        var garden_name = $this.next('a').text();
+
+        $.ajax({
+            url: '/api/garden/' + garden_name,
+            type: 'DELETE',
+            success: function(resp) {
+                console.log(resp);
+                $this.parent().detach();
+            },
+
+            error: function(resp, status, error) {
+                console.log(resp.responseJSON.error);
+                $this.button('reset');
+            },
+        })
+    })
+});
+</script>
+{% endblock %}
+
+{% block content %}
+    <h1>Your Gardens</h1>
+    You have {{ gardens|length }} garden{% if gardens|length != 1 %}s{% endif %}.
+    <ul>
+    {% for garden in gardens %}
+        <li>
+            <button class="btn btn-danger" data-loading-text="Deleting..." autocomplete="off">Delete</button><a href="/garden/{{ garden.name }}">{{ garden.name }}</a></li>
+    {% endfor %}
+    </ul>
+
+    <h1>Make New Garden</h1>
+    <form id="new-garden">
+        <div class="form-group">
+            <label for="name">Name</label>
+            <input type="text" class="form-control" name="name" />
+        </div>
+        <div class="form-group">
+            <label for="width">Width</label>
+            <input type="range" min="1" max="16" value="4" class="form-control" name="width" />
+            <output for="width">4</output>
+        </div>
+        <div class="form-group">
+            <label for="name">Height</label>
+            <input type="range" min="1" max="4" value="4" class="form-control" name="height" />
+            <output for="height">4</output>
+        </div>
+        <button type="submit" class="btn btn-default">Submit</button>
+    </form>
+{% endblock %}

@@ -5,10 +5,13 @@ import datetime
 import json
 
 
+_JS_DATE_FORMAT = '%Y-%m-%d'
+
+
 class Plant(object):
     """A single plant which is somewhere in a garden."""
 
-    def __init__(self, name, plant_date, growth_time):
+    def __init__(self, name, plant_date, harvest_date):
         """Create a new plant.
 
         Args:
@@ -18,28 +21,22 @@ class Plant(object):
         """
         self.name = name
         self.plant_date = plant_date
-        self._growth_time = growth_time
-
-    @property
-    def harvest_date(self):
-        """Get the harvest date of the plant, based on the growth time."""
-        return self.plant_date + datetime.timedelta(days=self._growth_time)
+        self.harvest_date = harvest_date
 
     def Serialize(self):
         """Serialize this object into a JSON dictionary."""
         return dict(
             name=self.name,
-            plant_date=self.plant_date.toordinal(),
-            growth_time=self._growth_time,
-            harvest_date=self.harvest_date)
+            plant_date=self.plant_date.strftime(_JS_DATE_FORMAT),
+            harvest_date=self.harvest_date.strftime(_JS_DATE_FORMAT))
 
     @classmethod
     def Load(cls, json):
         """Load this object from a JSON dictionary."""
         return cls(
             json['name'],
-            datetime.date.fromordinal(json['plant_date']),
-            json['growth_time'])
+            datetime.datetime.strptime(json['plant_date'], _JS_DATE_FORMAT),
+            datetime.datetime.strptime(json['harvest_date'], _JS_DATE_FORMAT))
 
 
 class Garden(object):
@@ -56,14 +53,15 @@ class Garden(object):
     def __init__(self, name, width, height):
         self.name = name
         self.slots = [[] for i in xrange(width*height)]
-        self.size = (width, height)
+        self.width = width
+        self.height = height
 
     def Serialize(self):
         """Serialize this object into a JSON dictionary."""
         return dict(
             name=self.name,
-            width=self.size[0],
-            height=self.size[1],
+            width=self.width,
+            height=self.height,
             slots=[[p.Serialize() for p in slot] for slot in self.slots])
 
     @classmethod
@@ -71,46 +69,23 @@ class Garden(object):
         """Load this object from a JSON dictionary."""
         obj = cls(json['name'], json['width'], json['height'])
         for slot_idx, slot_json in enumerate(json['slots']):
-        	for plant_json in slot_json:
-        		obj.slots[slot_idx].append(Plant.Load(plant_json))
+            for plant_json in slot_json:
+                obj.slots[slot_idx].append(Plant.Load(plant_json))
+
+            obj.slots[slot_idx].sort(key=lambda p: p.plant_date)
 
         return obj
 
-    def _GetSlot(self, x, y):
-        """Get the slot at the given coordinates.
+    def IsValid(self):
+        """Validate the current garden."""
+        # Make sure none of the plants overlap.
+        for slot in self.slots:
+            for i in range(len(slot) - 1):
+                p1 = slot[i]
+                p2 = slot[i+1]
 
-        Args:
-              x: int, the x-coordinate to get the slot for.
-              y: int, the y-coordinate to get the slot for.
+                if (p1.plant_date < p2.harvest_date and
+                    p1.harvest_date > p2.plant_date):
+                    return False
 
-        Returns:
-            The slot at index (x, y).
-
-        Raises:
-            IndexError: thrown if the coordinates are invalid.
-        """
-        width, height = self.size
-        if x < 0 or x >= width or y < 0 or y >= height:
-            raise IndexError("Invalid coordinates (%d, %d)" % (x, y))
-
-        return self.slots[x + y*width]
-
-    def AddPlant(self, x, y, new_plant):
-        """Add a new plant to this garden.
-
-        Args:
-                x: int, the x - coordinate to insert the plant into.
-                y: int, the y - coordinate to insert the plant into.
-                new_plant: Plant, the plant to insert into the grid.
-        """
-        slot = self._GetSlot(x, y)
-
-        # Does this start time overlap with anything?
-        for plant in slot:
-            if (plant.plant_date < new_plant.harvest_date and
-                plant.harvest_date > new_plant.plant_date):
-            	print(len(slot))
-                raise ValueError("Plant overlaps with another.")
-
-        # Insert the plant into its position.
-        bisect.insort_left(slot, new_plant)
+        return True

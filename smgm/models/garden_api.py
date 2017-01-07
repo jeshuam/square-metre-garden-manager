@@ -25,7 +25,6 @@ def post_garden():
     if not request:
         return jsonify(dict(error="No data provided")), 400
 
-    print(request.headers)
     name = request.args.get('name', None)
     width = request.args.get('width', None)
     height = request.args.get('height', None)
@@ -51,4 +50,25 @@ def post_garden():
     user.custom_data['gardens'][garden.name] = garden.Serialize()
     user.save()
 
+    return jsonify(dict(error=None)), 200
+
+
+@app.route('/api/garden/<string:name>', methods=['PUT'])
+@login_required
+def put_garden(name):
+    garden = Garden.Load(request.json)
+    if not garden.IsValid():
+        print(request.json)
+        return jsonify(dict(error="Garden is not valid")), 400
+
+    # Save the garden.
+    user.custom_data['gardens'][garden.name] = garden.Serialize()
+    user.save()
+    return jsonify(dict(error=None)), 200
+
+@app.route('/api/garden/<string:name>', methods=['DELETE'])
+@login_required
+def delete_garden(name):
+    del user.custom_data['gardens'][name]
+    user.save()
     return jsonify(dict(error=None)), 200

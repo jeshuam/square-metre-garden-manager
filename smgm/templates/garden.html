@@ -1,68 +1,273 @@
 {% extends "_common.html" %}
 
+{% block css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/navbar-fixed-side.min.css') }}" crossorigin="anonymous">
+<style type="text/css">
+
+div#garden div.row {
+    display: table;
+    margin: 0 auto;   
+}
+
+div#garden div.row div.slot {
+    display: table-cell;
+    height: 100px;
+    width: 100px;
+
+    /* debug */
+    background-color: yellow;
+    border: 1px solid black;
+}
+
+div.navbar .plant {
+
+}
+
+</style>
+{% endblock %}
+
 {% block js %}
 <script>
+function dateToString(date) {
+    var pad = function(num, len) {
+        var s = num + '';
+        while (s.length < len) s = '0' + s;
+        return s;
+    }
+
+    return pad(date.getUTCFullYear(), 4) + '-'
+         + pad(date.getUTCMonth() + 1, 2) + '-'
+         + pad(date.getUTCDate(), 2);
+}
+
+function stringToDate(string) {
+    var parts = string.split('-');
+    var date = new Date();
+    date.setUTCFullYear(parts[0]);
+    date.setUTCMonth(parts[1] - 1);
+    date.setUTCDate(parts[2]);
+    date.setHours(0, 0, 0, 0);
+
+    return date;
+}
+
+var _GARDEN = {{ garden_json|safe }};
+var _PLANTS = {{ plants_json|safe }};
+var _VIEW_DATE = new Date();
+
 $(function() {
-    // Update the number next to the range form fields (width/height).
-    $('form input[type=range]').on('input', function() {
-        $(this).next('output').text(this.value);
+    // Show the right slots depending on the _VIEW_DATE.
+    var updateSlots = function() {
+        $.each(_GARDEN.slots, function(slot_idx, slot) {
+            var plant = null;
+            $.each(slot, function(_, p) {
+                // Keep going until we find the first plant there the harvest date
+                // is less than the _VIEW_DATE.
+                if (stringToDate(p.harvest_date) >= _VIEW_DATE
+                    && stringToDate(p.plant_date) <= _VIEW_DATE) {
+                    plant = p
+                    return false;
+                }
+            });
+
+            // HTML structure.
+            
+
+            // If the plant IDX was found...
+            if (plant) {
+                var $slot = $('#slot-' + slot_idx);
+                console.log($slot);
+                $slot.find('span.name').text(plant.name);
+                $slot.find('span.plant-date').text(plant.plant_date);
+                $slot.find('span.harvest-date').text(plant.harvest_date);
+            }
+        });
+    }
+
+    updateSlots();
+
+    // Grey out plants which are not valid during this month.
+    $('.plant').each(function(_, plant) {
+        var plant_name = $(this).attr('id');
+
+        // Get the plant from the map.
+        var plant = _PLANTS[plant_name];
+        if (!plant) {
+            console.log('Found plant on page that is not in map??');
+            return;
+        }
+
+        // Check to see if it can be planted during this month.
+        var month = new Date().getMonth();
+        if (plant.calendar[month] == '') {
+            $(this).addClass('disabled');
+        }
     });
 
-    // On submit of the form.
-    $('form#new-garden').submit(function(e) {
-        e.preventDefault();
+    // Sort the plants, first based on disabled status and then based on name.
+    var sorted = $('.plant').sort(function(a, b) {
+        // Return 0 if they are equal, 1 if a is after b, -1 if a is before b.
+        var $a = $(a);
+        var $b = $(b);
 
-        // Validate the data.
-        var $this = $(this);
-        var data = {
-            name: $this.find('input[name=name]').val(),
-            width: $this.find('input[name=width]').val(),
-            height: $this.find('input[name=height]').val(),
+        // Check the classes. Disabled ones should always go later.
+        if ($a.hasClass('disabled') && !$b.hasClass('disabled')) {
+            return 1;
+        } else if ($b.hasClass('disabled') && !$a.hasClass('disabled')) {
+            return -1;
         }
-        
-        // Send the data.
-        console.log(data);
-        $.post({
-            url: '/api/garden?' + $this.serialize(),
-            data: data,
-            dataType: 'json',
-            success: function(resp) {
-                console.log(resp);
-            },
 
-            error: function(resp, status, error) {
-                console.log(resp.responseJSON.error);
-            },
-        });
+        // They both have the same class, so compare on name.
+        var aid = $a.attr('id');
+        var bid = $b.attr('id');
+        if (aid < bid) {
+            return -1;
+        } else if (aid > bid) {
+            return 1;
+        }
+
+        return 0;
+    });
+
+    $('#plant-container').html(sorted);
+
+    // Add tooltips to disabled elements.
+    $('.plant.disabled').each(function(_, plant) {
+        var plant_name = $(this).attr('id');
+        var message = 'It is not recommended to plant '
+                    + plant_name  + ' during this month.';
+
+        $(this).find('a')
+               .attr('data-toggle', 'tooltip')
+               .attr('data-placement', 'right')
+               .attr('title', message)
+               .tooltip({container: 'body'});
+    });
+
+    // Make plants draggable.
+    $('.plant').draggable({
+        helper: 'clone',
+        appendTo: 'body',
+        scope: 'slot',
+    });
+
+    // Make the slots droppable.
+    $('.slot').droppable({
+        scope: 'slot',
+
+        // Accept the dropped element.
+        drop: function(event, plant) {
+            var slot = $(event.target);
+            var slot_id = parseInt(slot.attr('id').split('-')[1]);
+            var plant_name = plant.draggable.attr('id');
+
+            // Add the plant to the UI.
+            slot.text(plant_name);
+
+            // Get plant information from the array.
+            // TODO(jeshua): add a way to confirm/ask for information.
+            var plant = _PLANTS[plant_name];
+
+            // Add the plant to the actual slot representation.
+            var growth_time = (plant.harvest_start + plant.harvest_end) / 2;
+            var plant_date = _VIEW_DATE;
+            var harvest_date = new Date(_VIEW_DATE);
+            harvest_date.setDate(harvest_date.getDate() + growth_time);
+
+            // If there is a plant being planted in this slot on the same day,
+            // then overwrite it.
+            var overwrote_plant = false;
+            $.each(_GARDEN.slots[slot_id], function(i, plant) {
+                if (plant.plant_date == dateToString(plant_date)) {
+                    overwrote_plant = true;
+                    plant.name = plant_name;
+                    plant.plant_date = dateToString(plant_date);
+                    plant.harvest_date = dateToString(harvest_date);
+                    return false;
+                }
+            });
+
+            if (!overwrote_plant) {
+                _GARDEN.slots[slot_id].push({
+                    name: plant_name,
+                    plant_date: dateToString(plant_date),
+                    harvest_date: dateToString(harvest_date),
+                });
+            }
+
+            // Save the garden.
+            $.ajax({
+                url: '/api/garden/' + _GARDEN.name,
+                type: 'PUT',
+                data: JSON.stringify(_GARDEN),
+                contentType: 'application/json',
+                success: function(resp) {
+                    console.log(resp);
+                },
+
+                error: function(resp, status, error) {
+                    console.log(resp.responseJSON.error);
+                },
+            })
+        },
     });
 });
 </script>
 {% endblock %}
 
 {% block content %}
-    You have {{ gardens|length }} garden{% if gardens|length != 1 %}s{% endif %}.
-    <ul>
-        {% for garden in gardens %}
-            <li>{{ garden.name }}, {{ garden.width }} x {{ garden.height }}</li>
-        {% endfor %}
-    </ul>
+    <div class="row">
+        <div class="col-sm-3 col-lg-2">
+          <nav class="navbar navbar-default navbar-fixed-side">
+              <div class="container">
+                <div class="navbar-header">
+                  <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar-plants">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                  </button>
+                  <a class="navbar-brand">Plants</a>
+                </div>
+                <div id="navbar-plants" class="collapse navbar-collapse">
+                  <ul class="nav navbar-nav" id="plant-container">
+                    {% for plant_name, plant in plants.iteritems() %}
+                        <li class="plant" id="{{ plant_name }}"><a>{{ plant_name }}</a></li>
+                    {% endfor %}
+                  </ul>
+                </div><!--/.nav-collapse -->
+              </div>
+          </nav>
+        </div>
+        <div class="col-sm-9 col-lg-10">
+            <h1>{{ garden.name }}</h1>
+            <div id="garden">
+                {% for slot in garden.slots %}
+                    {#
+                        If the loop index is 0, this is the first row so add the first
+                        row div. Otherwise, if we aren't on the first row and we are at
+                        a width boundary, close the previous row tag and start a new
+                        one.
+                    #}
+                    {% if loop.index0 == 0 %}
+                        <div class="row">
+                    {% elif loop.index0 % garden.width == 0 %}
+                        </div><div class="row">
+                    {% endif %}
 
-    <h1>New Garden</h1>
-    <form id="new-garden" class="form-inline">
-        <div class="form-group">
-            <label for="name">Name</label>
-            <input type="text" class="form-control" name="name" />
+                    {# Add the actual slot. #}
+                    <div class="slot" id="slot-{{ loop.index0 }}">
+                        <span class="name"></span>
+                        <span class="plant-date"></span>
+                        <span class="harvest-date"></span>
+                    </div>
+
+                    {# Add the final closing div tag. #}
+                    {% if loop.index0 == garden.slots|length - 1 %}
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
         </div>
-        <div class="form-group">
-            <label for="width">Width</label>
-            <input type="range" min="1" max="16" value="4" class="form-control" name="width" />
-            <output for="width">4</output>
-        </div>
-        <div class="form-group">
-            <label for="name">Height</label>
-            <input type="range" min="1" max="4" value="4" class="form-control" name="height" />
-            <output for="height">4</output>
-        </div>
-        <button type="submit" class="btn btn-default">Submit</button>
-    </form>
+    </div>
 {% endblock %}
