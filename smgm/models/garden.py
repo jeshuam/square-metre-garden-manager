@@ -102,6 +102,39 @@ class Garden(object):
             height=self.height,
             slots=[[p.Serialize() for p in slot] for slot in self.slots])
 
+    def ProgressFor(self, slot_idx, plant_idx):
+        """Get the progress bar widths for the space before and for some plant."""
+        # The total time is 2 years; show up to 1 year in the future.
+        now = datetime.datetime.now()
+        end = now.replace(year=now.year + 1).date()
+        start = now.replace(year=now.year - 1).date()
+        days_total = (end - start).days
+
+        # Get the current plant.
+        plant = self.slots[slot_idx][plant_idx]
+
+        # If we are looking at the first plant in a slot, compare it to the
+        # minimum.
+        whitespace_percent = 0
+        if (plant_idx == 0):
+            # If one year ago was before the plant, then work out the amount of
+            # space we need to show before the plant.
+            if plant.plant_date > start:
+                days_since_start = (plant.plant_date - start).days
+                whitespace_percent = int((float(days_since_start) / days_total)*100)
+            else:
+                whitespace_percent = 0
+        else:
+            previous_plant = self.slots[slot_idx][plant_idx-1]
+            days_since_last_plant_end = (
+                plant.plant_date - previous_plant.harvest_date).days
+            whitespace_percent = int((float(days_since_last_plant_end) / days_total)*100)
+
+        days_of_plant = (plant.harvest_date - plant.plant_date).days
+        plant_percent = int((float(days_of_plant) / days_total)*100)
+
+        return whitespace_percent, plant_percent
+
     @classmethod
     def Load(cls, json):
         """Load this object from a JSON dictionary."""

@@ -240,9 +240,9 @@ $(function() {
   // Change the view date when the selector is changed.
   $('input#view-date').on('input', function() {
     var $this = $(this);
-    var days_diff = $this.val();
+    var days_diff = parseInt($this.val());
     var new_date = new Date();
-    new_date.setDate(new_date.getDate() + parseInt(days_diff));
+    new_date.setDate(new_date.getDate() + days_diff);
     if (days_diff == 0) {
       $this.next('output').text('Today');
     } else if (days_diff == -1) {
@@ -252,6 +252,12 @@ $(function() {
     } else {
       $this.next('output').text(dateToString(new_date));
     }
+
+    // Move the vertical line.
+    var min = 0;
+    var max = 365 * 2;
+    var percent_done = (days_diff + 365) / max;
+    $('div.vertical-line .line').css('left', (percent_done * 100) + '%');
 
     // Change the view date, and then update.
     _VIEW_DATE = new_date;

@@ -39,6 +39,18 @@ div.loading {
     background-image: '{{ url_for("static", filename="img/loading.gif") }}';
 }
 
+div.padding {
+    background: none;
+}
+
+div.vertical-line .line {
+    border-left: thick solid;
+    width: 100%;
+    height: 100%;
+    left: 50%;
+    position: absolute;
+}
+
 </style>
 {% endblock %}
 
@@ -77,12 +89,6 @@ var _PLANTS = {{plants_json | safe}};
           </nav>
         </div>
         <div class="col-sm-9 col-lg-10">
-            <form>
-                <div class="input-group" style="width: 100%">
-                    <input type="range" min="-365" max="365" value="0" id="view-date" name="view-date" />
-                    <output style="text-align: center" for="view-date">Today</output>
-                </div>
-            </form>
             <h1>{{ garden.name }}</h1>
             <div id="error" style="display:none" class="alert alert-danger"></div>
             <div id="garden">
@@ -114,8 +120,7 @@ var _PLANTS = {{plants_json | safe}};
     </div>
 
     <div class="row">
-        <div class="col-sm-3 col-lg-2"></div>
-        <div class="col-sm-3 col-lg-2"></div>
+        <div class="col-sm-6 col-lg-4"></div>
         <div class="col-sm-4 col-lg-6" id="plant-info">
             {% for slot in garden.slots %}
                 {% set slot_id = loop.index %}
@@ -143,6 +148,36 @@ var _PLANTS = {{plants_json | safe}};
                     </div>
                 {% endfor %}
             {% endfor %}
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-sm-3 col-lg-2"></div>
+        <div class="col-sm-9 col-lg-10">
+            <div id="slot-bars">
+                <div class="slot-row">
+                    <form>
+                        <div class="input-group" style="width: 100%">
+                            <output style="text-align: center" for="view-date">Today</output>
+                            <input type="range" min="-365" max="365" value="0" id="view-date" name="view-date" />
+                        </div>
+                    </form>
+                    <div class="vertical-line">
+                        <div class="line"></div>
+                        {% for slot in garden.slots %}
+                            {% set slot_id = loop.index0 %}
+                            <div class="progress">
+                                {% for plant in slot %}
+                                    <div class="padding progress-bar" style="width: {{ garden.ProgressFor(slot_id, loop.index0)[0] }}%"></div>
+                                    <div class="progress-bar {% if loop.index0 % 2 == 0 %}progress-bar-success{% endif %}" style="width: {{ garden.ProgressFor(slot_id, loop.index0)[1] }}%">
+                                        {{ plant.name }}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
