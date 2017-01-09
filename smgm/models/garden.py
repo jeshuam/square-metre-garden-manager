@@ -23,6 +23,44 @@ class Plant(object):
         self.plant_date = plant_date
         self.harvest_date = harvest_date
 
+    def _JsTimeagoDatetime(self, date):
+        """Return a datetime compatible with timeago.
+
+        This will ensure that the hours, minutes and seconds match the current
+        time, with the goal being that "2 days ago" actually means 2 days ago.
+        Without this, it will over- or under-estimate the difference.
+
+        Args:
+            date: datetime.Date, the date to modify.
+
+        Returns:
+            A modified version of datetime.now() with the year, month and day
+            set based on `date`.
+        """
+        return datetime.datetime.now().replace(
+            year=date.year, month=date.month, day=date.day)
+
+    def JsPlantDate(self):
+        return self._JsTimeagoDatetime(self.plant_date)
+
+    def JsHarvestDate(self):
+        return self._JsTimeagoDatetime(self.harvest_date)
+
+    def DaysLeft(self):
+        """Return the number of days left until harvest."""
+        return (self.harvest_date - datetime.datetime.now().date()).days
+
+    def Progress(self):
+        """Get the plant's progress as a percentage from 0 -> 100.
+
+        This will use the current date as the percentage point.
+        """
+        now = datetime.datetime.now().date()
+        since_start_days = float((now - self.plant_date).days)
+        total_days = float((self.harvest_date - self.plant_date).days)
+        return int((since_start_days / total_days) * 100)
+
+
     def Serialize(self):
         """Serialize this object into a JSON dictionary."""
         return dict(
@@ -35,8 +73,8 @@ class Plant(object):
         """Load this object from a JSON dictionary."""
         return cls(
             json['name'],
-            datetime.datetime.strptime(json['plant_date'], _JS_DATE_FORMAT),
-            datetime.datetime.strptime(json['harvest_date'], _JS_DATE_FORMAT))
+            datetime.datetime.strptime(json['plant_date'], _JS_DATE_FORMAT).date(),
+            datetime.datetime.strptime(json['harvest_date'], _JS_DATE_FORMAT).date())
 
 
 class Garden(object):
@@ -76,9 +114,8 @@ class Garden(object):
 
         return obj
 
-    def IsValid(self):
-        """Validate the current garden."""
-        # Make sure none of the plants overlap.
+    def NotValidReason(self):
+        """Get a reason as to why the garden isn't valid."""
         for slot in self.slots:
             for i in range(len(slot) - 1):
                 p1 = slot[i]
@@ -86,6 +123,12 @@ class Garden(object):
 
                 if (p1.plant_date < p2.harvest_date and
                     p1.harvest_date > p2.plant_date):
-                    return False
+                    return ('Plant "%s" (planted on %s) would overlap with "%s" '
+                            '(planted on %s).') % (p1.name, p1.plant_date,
+                                                   p2.name, p2.plant_date)
+        return None
 
-        return True
+    def IsValid(self):
+        """Validate the current garden."""
+        # Make sure none of the plants overlap.
+        return self.NotValidReason() is None

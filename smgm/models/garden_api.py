@@ -58,8 +58,7 @@ def post_garden():
 def put_garden(name):
     garden = Garden.Load(request.json)
     if not garden.IsValid():
-        print(request.json)
-        return jsonify(dict(error="Garden is not valid")), 400
+        return jsonify(dict(error=garden.NotValidReason())), 400
 
     # Save the garden.
     user.custom_data['gardens'][garden.name] = garden.Serialize()
