@@ -11,12 +11,17 @@ div#garden div.row {
 
 div#garden div.row div.slot {
     display: table-cell;
-    height: 100px;
-    width: 100px;
+    height: 180px;
+    width: 180px;
 
     /* debug */
-    background-color: yellow;
+    /*background-color: yellow;*/
     border: 1px solid black;
+}
+
+div#garden div.row div.slot img {
+    max-width: 33%;
+    max-height: 33%;
 }
 
 div#garden div.row div.slot.active {
@@ -43,12 +48,28 @@ div.padding {
     background: none;
 }
 
-div.vertical-line .line {
-    border-left: thick solid;
-    width: 100%;
-    height: 100%;
-    left: 50%;
+div.vertical-line {
+    left: 0;
     position: absolute;
+    height: 100%;
+}
+
+#view-date-text {
+    text-align: center;
+}
+
+input[type=range] {
+  -webkit-appearance: none; /* Hides the slider so that custom slider can be made */
+  background: transparent; /* Otherwise white in Chrome */
+}
+
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  border: 1px solid #000000;
+  height: 600px;
+  width: 1px;
+  /*overflow-y: visible;*/
+  /*position: absolute;*/
 }
 
 </style>
@@ -107,7 +128,18 @@ var _PLANTS = {{plants_json | safe}};
 
                     {# Add the actual slot. #}
                     <div class="slot" id="slot-{{ loop.index0 }}">
-                        <span class="name"></span>
+                        <div class="sow">
+                            <img src="{{ url_for('static', filename='img/icon/seeds.png') }}"></img>
+                            <span></span>
+                        </div>
+                        <div class="growing">
+                            <img src="{{ url_for('static', filename='img/icon/sprout.png') }}"></img>
+                            <span></span>
+                        </div>
+                        <div class="harvest">
+                            <img src="{{ url_for('static', filename='img/icon/harvest.png') }}"></img>
+                            <span></span>
+                        </div>
                     </div>
 
                     {# Add the final closing div tag. #}
@@ -125,7 +157,7 @@ var _PLANTS = {{plants_json | safe}};
             {% for slot in garden.slots %}
                 {% set slot_id = loop.index %}
                 {% for plant in slot %}
-                    <div id="plant-info-{{ slot_id }}-{{ loop.index }}" class="panel panel-primary plant-info">
+                    <div id="plant-info-{{ slot_id }}-{{ plant.name|lower }}" class="panel panel-primary plant-info">
                         <div class="panel-heading">{{ plant.name }}</div>
                         <div class="panel-body">
                             <div class="timing">
@@ -152,30 +184,26 @@ var _PLANTS = {{plants_json | safe}};
     </div>
 
     <div class="row">
-        <div class="col-sm-3 col-lg-2"></div>
-        <div class="col-sm-9 col-lg-10">
+        <div class="col-sm-4 col-lg-3"></div>
+        <div class="col-sm-7 col-lg-8">
             <div id="slot-bars">
                 <div class="slot-row">
-                    <form>
-                        <div class="input-group" style="width: 100%">
-                            <output style="text-align: center" for="view-date">Today</output>
-                            <input type="range" min="-365" max="365" value="0" id="view-date" name="view-date" />
-                        </div>
-                    </form>
-                    <div class="vertical-line">
-                        <div class="line"></div>
-                        {% for slot in garden.slots %}
-                            {% set slot_id = loop.index0 %}
-                            <div class="progress">
-                                {% for plant in slot %}
-                                    <div class="padding progress-bar" style="width: {{ garden.ProgressFor(slot_id, loop.index0)[0] }}%"></div>
-                                    <div class="progress-bar {% if loop.index0 % 2 == 0 %}progress-bar-success{% endif %}" style="width: {{ garden.ProgressFor(slot_id, loop.index0)[1] }}%">
-                                        {{ plant.name }}
-                                    </div>
-                                {% endfor %}
-                            </div>
-                        {% endfor %}
+                    <div id="view-date-text">Today</div>
+                    <div class="col-sm-12 col-md-12 col-lg-12 vertical-line">
+                        <input type="range" min="-30" max="180" value="0" id="view-date" name="view-date" />
                     </div>
+                    {% for slot in garden.slots %}
+                        {% set slot_id = loop.index0 %}
+                        <div class="progress">
+                            {% for plant in slot %}
+                                {% set progress = garden.ProgressFor(slot_id, loop.index0) %}
+                                <div class="padding progress-bar" style="width: {{ progress[0] }}%"></div>
+                                <div class="progress-bar progress-bar-success" style="width: {{ progress[1] }}%">
+                                    {{ plant.name }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
                 </div>
             </div>
         </div>
