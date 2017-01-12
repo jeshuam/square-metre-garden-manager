@@ -4,6 +4,9 @@ import bisect
 import datetime
 import json
 
+from collections import defaultdict
+from icalendar import Event
+
 
 _JS_DATE_FORMAT = '%Y-%m-%d'
 
@@ -138,6 +141,34 @@ class Garden(object):
             plant_percent))
 
         return whitespace_percent, plant_percent
+
+    def AddEvents(self, cal):
+        """Modify the given calendar by adding a series of events."""
+        sow_events = defaultdict(list)
+        harvest_events = defaultdict(list)
+
+        for slot in self.slots:
+            for plant in slot:
+                sow_events[plant.plant_date].append(plant)
+                harvest_events[plant.harvest_date].append(plant)
+
+        # Add the events to the calendar.
+        for sow_date, plants in sow_events.iteritems():
+            event = Event()
+            event['dtstart'] = sow_date
+            event['dtend'] = sow_date
+            event['summary'] = 'Sow %s' % (','.join([p.name for p in plants]))
+            event['location'] = self.name
+            cal.add_component(event)
+
+        for harvest_date, plants in harvest_events.iteritems():
+            event = Event()
+            event['dtstart'] = harvest_date
+            event['dtend'] = harvest_date
+            event['summary'] = 'Harvest %s' % (','.join([p.name for p in plants]))
+            event['location'] = self.name
+            cal.add_component(event)        
+
 
     @classmethod
     def Load(cls, json):

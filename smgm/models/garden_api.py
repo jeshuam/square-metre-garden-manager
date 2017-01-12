@@ -5,7 +5,9 @@ from __future__ import print_function
 from garden import Plant, Garden
 from smgm import app
 from flask import jsonify, request, abort
-from flask_stormpath import login_required, user
+from flask_stormpath import login_required, user, StormpathManager
+from icalendar import Calendar
+
 
 @app.route('/api/garden', methods=['GET'])
 @app.route('/api/garden/<string:name>', methods=['GET'])
@@ -71,3 +73,18 @@ def delete_garden(name):
     del user.custom_data['gardens'][name]
     user.save()
     return jsonify(dict(error=None)), 200
+
+
+@app.route('/api/gardens/ics/<string:id>', methods=['GET'])
+def get_gardens_ics_for_user(id):
+    base = 'https://api.stormpath.com/v1/accounts/%s'
+    user = StormpathManager.load_user(base % id)
+    if not user:
+        abort(404)
+
+    gardens_raw = user.custom_data.get('gardens', {})
+    ics = Calendar()
+    for garden_raw in gardens_raw.itervalues():
+        Garden.Load(garden_raw).AddEvents(ics)
+
+    return ics.to_ical()
