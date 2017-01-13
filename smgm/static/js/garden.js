@@ -6,8 +6,8 @@ function padWith(toPad, len, char) {
 
 function dateToString(date) {
   return padWith(date.getUTCFullYear(), 4, '0') + '-' +
-      padWith(date.getUTCMonth() + 1, 2, '0') + '-' +
-      padWith(date.getUTCDate(), 2, '0');
+         padWith(date.getUTCMonth() + 1, 2, '0') + '-' +
+         padWith(date.getUTCDate(), 2, '0');
 }
 
 function stringToDate(string) {
@@ -45,8 +45,8 @@ var _VIEW_DATE = new Date();
 $.timeago.settings.refreshMillis = 30;
 $.timeago.settings.currentTimeFunction =
     function() {
-  return _VIEW_DATE;
-}
+      return _VIEW_DATE;
+    }
 
 // Show the slot information panel for the given slot. This will hide all other
 // information panels. If there is no plant in the given slot, no panel will be
@@ -79,8 +79,8 @@ function ShowSlotInfoPanelFor($slot) {
     // Work out the new width of the progress bar.
     var days_since_start =
         daysApart(_VIEW_DATE, stringToDate(plant.plant_date));
-    var days_total = daysApart(
-        stringToDate(plant.plant_date), stringToDate(plant.harvest_date));
+    var days_total = daysApart(stringToDate(plant.plant_date),
+                               stringToDate(plant.harvest_date));
     var progress = Math.round((days_since_start / days_total) * 100);
 
     // If there is no information panel associated with this slot, then we
@@ -184,6 +184,14 @@ $(function() {
   // Hide the plant information, until someone clicks on a slot.
   $('.plant-info').hide();
 
+  // Make the top thing resizable.
+  $('#slot-bars')
+      .resizable({
+        grid: [0, 21],
+        handles: 's',
+        maxHeight: ($('.slot').length + 1) * 21,
+      });
+
   // When someone clicks on a slot...
   $('div.slot').click(function() { ShowSlotInfoPanelFor($(this)); });
 
@@ -254,38 +262,45 @@ $(function() {
     },
   });
 
-  $('input#view-date').on('input', function() {
-    var $this = $(this);
-    var days_diff = parseInt($this.val());
-    var new_date = new Date();
-    new_date.setDate(new_date.getDate() + days_diff);
+  $('input#view-date')
+      .on('input', function() {
+        var $this = $(this);
+        var days_diff = parseInt($this.val());
+        var new_date = new Date();
+        new_date.setDate(new_date.getDate() + days_diff);
 
-    var new_val = '';
-    if (days_diff == 0) {
-      new_val = 'Today';
-    } else if (days_diff == -1) {
-      new_val = 'Yesterday';
-    } else if (days_diff == 1) {
-      new_val = 'Tomorrow';
-    } else {
-      new_val = dateToString(new_date);
-    }
+        var new_val = '';
+        if (days_diff == 0) {
+          new_val = 'Today';
+        } else if (days_diff == -1) {
+          new_val = 'Yesterday';
+        } else if (days_diff == 1) {
+          new_val = 'Tomorrow';
+        } else {
+          new_val = dateToString(new_date);
+        }
 
-    $('#view-date-text').text(new_val);
-    // $('.tooltip .tooltip-inner').text(new_val);
+        // $('.tooltip .tooltip-inner').text(new_val);
 
-    // Move the vertical line.
-    var min = 0;
-    var max = 365 * 2;
-    var percent_done = (days_diff + 365) / max;
-    $('div.vertical-line .line').css('left', (percent_done * 100) + '%');
+        // Move the vertical line.
+        var min = $(this).attr('min');
+        var max = $(this).attr('max');
+        var percent_done = (days_diff - min) / (max - min);
+        $('div.vertical-line .line').css('left', (percent_done * 100) + '%');
 
-    // Change the view date, and then update.
-    _VIEW_DATE = new_date;
-    ShowSlotInfoPanelFor($('div.slot.active'), new_date);
-    UpdateSlots();
-    UpdatePlantPicker();
-  });
+        var text_loc = ((percent_done * 100) - 2.5);
+        if (text_loc < 0) {
+          text_log = 0;
+        }
+        $('#view-date-text').text(new_val);
+        $('#view-date-text').css('margin-left', text_loc + '%');
+
+        // Change the view date, and then update.
+        _VIEW_DATE = new_date;
+        ShowSlotInfoPanelFor($('div.slot.active'), new_date);
+        UpdateSlots();
+        UpdatePlantPicker();
+      });
 
   // Update the slots and plant picker based on the current date.
   UpdateSlots();
