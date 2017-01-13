@@ -113,6 +113,11 @@ class Garden(object):
         end = now + datetime.timedelta(days=180)
         days_total = float((end - start).days)
 
+        # Get the total percent up until this plant.
+        previous_percents = [self.ProgressFor(slot_idx, i)
+                             for i in range(plant_idx)]
+        total_percent = sum([sum(p) for p in previous_percents])
+
         # Get the current plant.
         plant = self.slots[slot_idx][plant_idx]
 
@@ -124,7 +129,7 @@ class Garden(object):
             # space we need to show before the plant.
             if plant.plant_date > start:
                 days_since_start = (plant.plant_date - start).days
-                whitespace_percent = (float(days_since_start) / days_total)*100
+                whitespace_percent = (float(days_since_start+1) / days_total)*100
             else:
                 whitespace_percent = 0
         else:
@@ -139,6 +144,14 @@ class Garden(object):
         print('ProgressFor %s %s %s %s %s %s' % (
             plant.name, plant.plant_date, start, end, whitespace_percent,
             plant_percent))
+
+        # If the whitespace percent or plant percent goes over this limit, then
+        # set the corresponding one to this limit.
+        if total_percent + whitespace_percent > 100:
+            whitespace_percent = 100 - total_percent
+            plant_percent = 0
+        elif total_percent + whitespace_percent + plant_percent > 100:
+            plant_percent = 100 - (total_percent + whitespace_percent)
 
         return whitespace_percent, plant_percent
 

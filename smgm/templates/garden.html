@@ -1,146 +1,43 @@
 {% extends "_common.html" %}
 
 {% block css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/navbar-fixed-side.min.css') }}" crossorigin="anonymous">
-<style type="text/css">
 
-div#garden div.row {
-    display: table;
-    margin: 0 auto;   
-}
+{# Libraries #}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/lib/navbar-fixed-side.min.css') }}">
 
-div#garden div.row div.slot {
-    display: table-cell;
-    height: 180px;
-    width: 180px;
+{# Page CSS #}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/garden.css') }}">
 
-    /* debug */
-    /*background-color: yellow;*/
-    border: 1px solid black;
-}
-
-div#garden div.row div.slot img {
-    max-width: 33%;
-    max-height: 33%;
-}
-
-div#garden div.row div.slot.active {
-    background-color: lightblue;
-}
-
-div.plant-info .timing {
-    /*width: 500px;*/
-}
-
-div.plant-info .timing img {
-    width: 100%;
-}
-
-div.plant-info .timing .progress-container {
-    margin-top: 5%; /* this magically works for all sizes! */
-}
-
-div.loading {
-    background-image: '{{ url_for("static", filename="img/loading.gif") }}';
-}
-
-div.padding {
-    background: none;
-}
-
-div.vertical-line {
-    left: 0;
-    padding: 0;
-    margin: 0;
-    position: absolute;
-    height: 100%;
-}
-
-#view-date-text {
-    /*text-align: center;*/
-}
-
-#slot-bars {
-    height: 124px;
-    overflow: hidden;
-}
-
-div.slot-row .progress {
-    margin-bottom: 1px;
-    box-shadow: none;
-    background-image: none;
-    border-radius: 0px;
-}
-
-div.slot-row .progress-bar {
-    box-shadow: none;
-    background-image: none;
-}
-
-input[type=range] {
-  -webkit-appearance: none; /* Hides the slider so that custom slider can be made */
-  background: transparent; /* Otherwise white in Chrome */
-}
-
-input[type=range]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  border: 1px solid #000000;
-  height: 1000px;
-  width: 1px;
-  /*overflow-y: visible;*/
-  /*position: absolute;*/
-}
-
-</style>
 {% endblock %}
 
 {% block js %}
+
 {# Pass some information from Python --> JS #}
 <script type="text/javascript">
 var _GARDEN = {{garden_json | safe}};
 var _PLANTS = {{plants_json | safe}};
 </script>
 
+{# Libraries #}
+<script src="{{ url_for('static', filename='js/lib/bootstrap3-typeahead.min.js') }}"></script>
+
+{# Page JS #}
 <script src="{{ url_for('static', filename='js/garden.js') }}"></script>
+
 {% endblock %}
 
 {% block content %}
-    <div class="row">
-        <div class="col-sm-12 col-lg-12">
-            <div id="slot-bars">
-                <div id="view-date-text">Today</div>
-                <div class="col-sm-12 col-md-12 col-lg-12 vertical-line">
-                    <input type="range" min="-30" max="180" value="0" id="view-date" name="view-date" />
-                </div>
-                <div class="slot-row">
-                    {% for slot in garden.slots %}
-                        {% set slot_id = loop.index0 %}
-                        <div class="progress">
-                            {% for plant in slot %}
-                                {% set progress = garden.ProgressFor(slot_id, loop.index0) %}
-                                <div class="padding progress-bar" style="width: {{ progress[0] }}%"></div>
-                                <div class="progress-bar progress-bar-success" style="width: {{ progress[1] }}%">
-                                    {{ plant.name }}
-                                </div>
-                            {% endfor %}
-                        </div>
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
-    </div>
+    {# Loading splash which will take up the whole page. Will only be removed 
+     # once the page has finished loading.
+     #}
+    <div id="loading-splash"></div>
 
     <div class="row">
-        <div class="col-sm-3 col-lg-2">
+        {# The plant picker on the left; will be hidden on mobile. #}
+        <div class="col-sm-0 col-lg-2">
           <nav class="navbar navbar-default navbar-fixed-side">
               <div class="container">
                 <div class="navbar-header">
-                  <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar-plants">
-                    <span class="sr-only">Toggle navigation</span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                  </button>
                   <a class="navbar-brand">Plants</a>
                 </div>
                 <div id="navbar-plants" class="collapse navbar-collapse">
@@ -149,12 +46,39 @@ var _PLANTS = {{plants_json | safe}};
                         <li class="plant" id="{{ plant_name }}"><a>{{ plant_name }}</a></li>
                     {% endfor %}
                   </ul>
-                </div><!--/.nav-collapse -->
+                </div>
               </div>
           </nav>
         </div>
-        <div class="col-sm-9 col-lg-10">
-            <h1>{{ garden.name }}</h1>
+
+        {# The main garden display. #}
+        <div class="col-sm-12 col-lg-10">
+            <h1>{{ garden.name }} (view date: <span id="view-date-text">Today</span>)</h1>
+            <div id="slot-bars">
+                {# This vertical line class will ensure that the modified range
+                 # selector will take up the whole width of the progress bars.
+                 #}
+                <div class="col-sm-12 col-md-12 col-lg-12 vertical-line">
+                    <input type="range" min="-30" max="180" value="0" id="view-date" name="view-date" />
+                </div>
+
+                {# The actual progress bars being displayed. #}
+                {% for slot in garden.slots %}
+                    {% set slot_id = loop.index0 %}
+                    <div class="progress">
+                        {% for plant in slot %}
+                            {% set progress = garden.ProgressFor(slot_id, loop.index0) %}
+                            <div class="padding progress-bar" style="width: {{ progress[0] }}%"></div>
+                            <div class="progress-bar {% if loop.index0 % 2 == 0 %}progress-bar-success{% endif %}" style="width: {{ progress[1] }}%">
+                                {{ plant.name }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+            </div>
+
+            <br />
+
             <div id="error" style="display:none" class="alert alert-danger"></div>
             <div id="garden">
                 {% for slot in garden.slots %}
@@ -184,6 +108,17 @@ var _PLANTS = {{plants_json | safe}};
                             <img src="{{ url_for('static', filename='img/icon/harvest.png') }}"></img>
                             <span></span>
                         </div>
+                        <div class="loading" style="display:none;">
+                            <img src="/static/img/loading.gif" />
+                        </div>
+                        <div class="new" style="display:none;">
+                            <img src="{{ url_for('static', filename='img/icon/seed.png') }}"></img>
+                            <form>
+                                <div class="form-group">
+                                    <input style="display:none;" class="form-control" type="text" name="pick-plant" />
+                                </div>
+                            </form>
+                        </div>
                     </div>
 
                     {# Add the final closing div tag. #}
@@ -191,62 +126,6 @@ var _PLANTS = {{plants_json | safe}};
                         </div>
                     {% endif %}
                 {% endfor %}
-            </div>
-        </div>
-    </div>
-
-    <div class="row">
-        <div class="col-sm-6 col-lg-4"></div>
-        <div class="col-sm-4 col-lg-6" id="plant-info">
-            {% for slot in garden.slots %}
-                {% set slot_id = loop.index %}
-                {% for plant in slot %}
-                    <div id="plant-info-{{ slot_id }}-{{ plant.name|lower }}" class="panel panel-primary plant-info">
-                        <div class="panel-heading">{{ plant.name }}</div>
-                        <div class="panel-body">
-                            <div class="timing">
-                                <div class="sow col-sm-4 col-lg-2">
-                                    <img src="{{ url_for('static', filename='img/icon/seeds.png') }}"></img>
-                                </div>
-                                <div class="progress-container col-sm-4 col-lg-8">
-                                    <div class="progress">
-                                        <div class="progress-bar progress-bar-success progress-bar-striped active" style="width: {{ plant.Progress() }}%;"></div>
-                                    </div>
-                                    <div style="text-align: center">
-                                        <time class="timeago" datetime="{{ plant.harvest_date }}">{{ plant.harvest_date }}</time>
-                                    </div>
-                                </div>
-                                <div class="harvest col-sm-4 col-lg-2">
-                                    <img src="{{ url_for('static', filename='img/icon/harvest.png') }}"></img>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                {% endfor %}
-            {% endfor %}
-        </div>
-    </div>
-
-    <div style="display:none">
-        <div id="plant-info-template" class="panel panel-primary plant-info">
-            <div class="panel-heading"></div>
-            <div class="panel-body">
-                <div class="timing">
-                    <div class="sow col-sm-4 col-lg-2">
-                        <img src="{{ url_for('static', filename='img/icon/seeds.png') }}"></img>
-                    </div>
-                    <div class="progress-container col-sm-4 col-lg-8">
-                        <div class="progress">
-                            <div class="progress-bar progress-bar-success progress-bar-striped active" style="width: 0%;"></div>
-                        </div>
-                        <div style="text-align: center">
-                            <time class="timeago" datetime=""></time>
-                        </div>
-                    </div>
-                    <div class="harvest col-sm-4 col-lg-2">
-                        <img src="{{ url_for('static', filename='img/icon/harvest.png') }}"></img>
-                    </div>
-                </div>
             </div>
         </div>
     </div>

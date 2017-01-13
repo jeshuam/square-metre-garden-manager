@@ -1,0 +1,133 @@
+/* Loading screen styles. */
+div#loading-splash {
+    position: fixed;
+    left: 0px;
+    top: 0px;
+    width: 100%;
+    height: 100%;
+    z-index: 9999;
+    background: url(/static/img/loading.gif) center no-repeat #fff;
+}
+
+/********************************/
+/* Top-down garden view styles. */
+/********************************/
+div#garden {
+    display: flex;
+    flex-direction: column;
+}
+
+div#garden div.row {
+    display: flex;
+
+    /* Horizontally align rows. */
+    margin: 0 auto;
+}
+
+div#garden div.row div.slot {
+    /* Fixed height boxes. TODO(jeshua): is there something better? */
+    height: 180px;
+    width: 180px;
+    
+    /* Vertically align content. */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+
+    /* Horizontally align text. */
+    text-align: center;
+
+    /* Show each of them as a separate box. */
+    border: 1px solid black;
+    margin: 5px;
+}
+
+div#garden div.row div.slot img {
+    /* Make sure images within slots don't take up too much space. */
+    max-width: 33%;
+}
+
+/* Style for sowing a new plant in a slot. */
+div#garden div.row div.slot:hover div.new img {
+    /* Display the sow image when the slot is hovered. */
+    display: inline;
+}
+
+div#garden div.row div.slot div.new img {
+    /* Hide the sow image by default. */
+    display: none;
+
+    /* Show a cursor when mousing over the image. */
+    cursor: pointer;
+}
+
+div#garden div.row div.slot div.new input {
+    /* Make the input look nice in the box (center it too). */
+    width: 80%;
+    margin: 0 auto;
+}
+
+/********************/
+/* Time-bar styles. */
+/********************/
+#slot-bars {
+    /* Each slot bar is 21 pixels; by default show 6 of them. */
+    height: 126px;
+
+    /* Hide the rest. */
+    overflow: hidden;
+}
+
+div#slot-bars div.progress div.padding {
+    /* The padding bars should be essentially invisible. */
+    background: none;
+}
+
+div#slot-bars div.progress {
+    /* Reduced margin on the bottom. */
+    margin-bottom: 1px;
+
+    /* Re-style the boxes to be more square and look better next to each
+     * other. */
+    box-shadow: none;
+    background-image: none;
+    border-radius: 0px;
+}
+
+div#slot-bars div.progress div.progress-bar {
+    /* Re-style the bars to be more square and look better next to each
+     * other. */
+    box-shadow: none;
+    background-image: none;
+}
+
+/* Modified range slider styles. */
+div#slot-bars div.vertical-line {
+    /* Make sure the slider is exactly as big as the progress bars. */
+    padding: 0;
+    margin: 0;
+
+    /* It should be on top of everything else too. */
+    position: absolute;
+}
+
+div#slot-bars div.vertical-line input[type=range] {
+  /* Hides the slider so that custom slider can be made. */
+  -webkit-appearance: none;
+
+  /* Hides the slider background. */
+  background: transparent;
+}
+
+div#slot-bars div.vertical-line input[type=range]::-webkit-slider-thumb {
+  /* Disable the default appearance. */
+  -webkit-appearance: none;
+
+  /* Display a solid black line. */
+  border: 1px solid #000000;
+  width: 0px;
+
+  /* Display this line for the whole page (warning: hack alert). */
+  height: 1000px;
+}
+
