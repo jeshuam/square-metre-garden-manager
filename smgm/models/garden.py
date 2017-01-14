@@ -5,79 +5,47 @@ import datetime
 import json
 
 from collections import defaultdict
+from dateutil.parser import parse as parse_date
 from icalendar import Event
-
-
-_JS_DATE_FORMAT = '%Y-%m-%d'
 
 
 class Plant(object):
     """A single plant which is somewhere in a garden."""
 
-    def __init__(self, name, plant_date, harvest_date):
+    def __init__(self, name, plant_date_str, harvest_date_str):
         """Create a new plant.
 
         Args:
             name: string, The name of the plant.
-            plant_date: datetime.date, The start date of the plant.
-            growth_time: int, The growth time (in days) of the plant.
+            plant_date_str: str, The start date of the plant.
+            growth_time: str, The harvest date of the plant.
         """
         self.name = name
-        self.plant_date = plant_date
-        self.harvest_date = harvest_date
+        self._plant_date = plant_date_str
+        self._harvest_date = harvest_date_str
 
-    def _JsTimeagoDatetime(self, date):
-        """Return a datetime compatible with timeago.
 
-        This will ensure that the hours, minutes and seconds match the current
-        time, with the goal being that "2 days ago" actually means 2 days ago.
-        Without this, it will over- or under-estimate the difference.
+    @property
+    def plant_date(self):
+        return parse_date(self._plant_date).date()
 
-        Args:
-            date: datetime.Date, the date to modify.
 
-        Returns:
-            A modified version of datetime.now() with the year, month and day
-            set based on `date`.
-        """
-        return datetime.datetime.now().replace(
-            year=date.year, month=date.month, day=date.day)
-
-    def JsPlantDate(self):
-        return self._JsTimeagoDatetime(self.plant_date)
-
-    def JsHarvestDate(self):
-        return self._JsTimeagoDatetime(self.harvest_date)
-
-    def DaysLeft(self):
-        """Return the number of days left until harvest."""
-        return (self.harvest_date - datetime.datetime.now().date()).days
-
-    def Progress(self):
-        """Get the plant's progress as a percentage from 0 -> 100.
-
-        This will use the current date as the percentage point.
-        """
-        now = datetime.datetime.now().date()
-        since_start_days = float((now - self.plant_date).days)
-        total_days = float((self.harvest_date - self.plant_date).days)
-        return int((since_start_days / total_days) * 100)
+    @property
+    def harvest_date(self):
+        return parse_date(self._harvest_date).date()
 
 
     def Serialize(self):
         """Serialize this object into a JSON dictionary."""
         return dict(
             name=self.name,
-            plant_date=self.plant_date.strftime(_JS_DATE_FORMAT),
-            harvest_date=self.harvest_date.strftime(_JS_DATE_FORMAT))
+            plant_date=self._plant_date,
+            harvest_date=self._harvest_date)
 
     @classmethod
     def Load(cls, json):
         """Load this object from a JSON dictionary."""
-        return cls(
-            json['name'],
-            datetime.datetime.strptime(json['plant_date'], _JS_DATE_FORMAT).date(),
-            datetime.datetime.strptime(json['harvest_date'], _JS_DATE_FORMAT).date())
+        return cls(json['name'], json['plant_date'], json['harvest_date'])
 
 
 class Garden(object):
@@ -129,7 +97,7 @@ class Garden(object):
             # space we need to show before the plant.
             if plant.plant_date > start:
                 days_since_start = (plant.plant_date - start).days
-                whitespace_percent = (float(days_since_start+1) / days_total)*100
+                whitespace_percent = (float(days_since_start) / days_total)*100
             else:
                 whitespace_percent = 0
         else:
@@ -140,10 +108,6 @@ class Garden(object):
 
         days_of_plant = (plant.harvest_date - plant.plant_date).days
         plant_percent = (float(days_of_plant) / days_total)*100
-
-        print('ProgressFor %s %s %s %s %s %s' % (
-            plant.name, plant.plant_date, start, end, whitespace_percent,
-            plant_percent))
 
         # If the whitespace percent or plant percent goes over this limit, then
         # set the corresponding one to this limit.
