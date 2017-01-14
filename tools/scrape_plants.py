@@ -18,6 +18,9 @@ _ROOT = 'http://www.gardenate.com'
 ## plants we can get information about.
 _LIST_PAGE = _ROOT + '/plants'
 
+## Suffix to add to the final page.
+_PAGE_ARGS = '?zone=3'
+
 
 def GetPlantInfo(information_div, css_class):
     """Extract the plant info from information_div with class css_class."""
@@ -108,7 +111,7 @@ if __name__ == '__main__':
     # For each plant...
     for plant_url in plant_urls:
         # Get details about the plant.
-        url = _ROOT + plant_url.get('href')
+        url = _ROOT + plant_url.get('href') + _PAGE_ARGS
         name = plant_url.string
 
         # If we've already looked at this plant, just skip it.
