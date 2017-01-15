@@ -4,7 +4,47 @@
  *
  * @type       {Date}
  */
-var _VIEW_DATE = moment();
+var _VIEW_DATE = moment().startOf('day');
+
+// Load the _GARDEN variable; convert the dates into actual dates. This can be
+// done before the page load, so why not?
+$.each(_GARDEN.slots, function(_, slot) {
+  $.each(slot, function(_, plant) {
+    plant.plant_date = StringToDate(plant.plant_date);
+    plant.harvest_date = StringToDate(plant.harvest_date);
+  });
+});
+
+/**
+ * Utility function to convert a JS Garden object into a plain-old-data
+ * dictionary which can be JSONified.
+ *
+ * @class      GardenToJson (name)
+ * @param      {Object}  garden  The garden to convert.
+ * @return     {Object} A JSON-compatible version of garden.
+ */
+function GardenToJson(garden) {
+  var json_slots = [];
+  $.each(garden.slots, function(_, slot) {
+    var json_slot = [];
+    $.each(slot, function(_, plant) {
+      json_slot.push({
+        name: plant.name,
+        plant_date: DateToString(plant.plant_date),
+        harvest_date: DateToString(plant.harvest_date),
+      });
+    });
+
+    json_slots.push(json_slot);
+  });
+
+  return {
+    name: garden.name,
+    width: garden.width,
+    height: garden.height,
+    slots: json_slots,
+  };
+};
 
 /**
  * Utility function to convert the given string into a time. It is assumed to be
@@ -42,8 +82,7 @@ function GetCurrentPlantsInSlot(slot) {
   var plants = [];
   $.each(slot, function(_, plant) {
     if (_VIEW_DATE.isBetween(
-            StringToDate(plant.plant_date), StringToDate(plant.harvest_date),
-            'day', '[]')) {
+            plant.plant_date, plant.harvest_date, 'day', '[]')) {
       plants.push(plant);
     }
   });
@@ -67,9 +106,9 @@ function UpdateSlots() {
     // harvesting or planting, and there can only be one of each.
     var plant_state = {};
     $.each(plants, function(plant_idx, plant) {
-      if (_VIEW_DATE.isSame(StringToDate(plant.plant_date))) {
+      if (_VIEW_DATE.isSame(plant.plant_date)) {
         plant_state.sow = plant;
-      } else if (_VIEW_DATE.isSame(StringToDate(plant.harvest_date))) {
+      } else if (_VIEW_DATE.isSame(plant.harvest_date)) {
         plant_state.harvest = plant;
       } else {
         plant_state.growing = plant;
@@ -100,7 +139,7 @@ function UpdateSlots() {
     _ShowOrHideState('growing');
 
     // If nothing is being displayed, suggest adding something.
-    if (!plant_state.sow && !plant_state.growing) {
+    if (!plant_state.growing) {
       $slot.find('.new').show();
     } else {
       $slot.find('.new').hide();
@@ -114,8 +153,9 @@ function UpdateSlots() {
  * @class      AddNewTimeBar (name)
  * @param      {int}  slot_idx   The slot index.
  * @param      {int}  plant_idx  The plant index.
+ * @param      {bool} overwrite true if this plant overwrote another plant.
  */
-function AddNewTimeBar(slot_idx, plant_idx) {
+function AddNewTimeBar(slot_idx, plant_idx, overwrite) {
   var slot = _GARDEN.slots[slot_idx];
   var plant = slot[plant_idx];
 
@@ -130,8 +170,8 @@ function AddNewTimeBar(slot_idx, plant_idx) {
   var next_whitespace = -1;  // > 0 if we need to modify the next whitespace.
   if (plant_idx == 0) {
     // If this plant was planted after the start, we need some whitespace.
-    if (StringToDate(plant.plant_date).isAfter(start)) {
-      var days_since_start = StringToDate(plant.plant_date).diff(start, 'days');
+    if (plant.plant_date.isAfter(start)) {
+      var days_since_start = plant.plant_date.diff(start, 'days');
       whitespace_percent = ((days_since_start + 1) / days_total) * 100.0;
     }
   }
@@ -140,24 +180,21 @@ function AddNewTimeBar(slot_idx, plant_idx) {
   else if (plant_idx > 0) {
     var previous_plant = slot[plant_idx - 1];
     var days_since_last_plant_end =
-        StringToDate(plant.plant_date)
-            .diff(StringToDate(previous_plant.harvest_date), 'days');
+        plant.plant_date.diff(previous_plant.harvest_date, 'days');
     var whitespace_percent = (days_since_last_plant_end / days_total) * 100.0;
 
     // If there is a plant after me, we need to adjust that plant too.
     if (slot.length > plant_idx + 1) {
       var next_plant = slot[plant_idx + 1];
       var days_bewteen_this_end_and_next_start =
-          StringToDate(next_plant.plant_date)
-              .diff(StringToDate(plant.harvest_date), 'days');
+          next_plant.plant_date.diff(plant.harvest_date, 'days');
       var next_whitespace =
           (days_bewteen_this_end_and_next_start / days_total) * 100.0;
     }
   }
 
   // Work out the plant percent.
-  var days_of_plant = StringToDate(plant.harvest_date)
-                          .diff(StringToDate(plant.plant_date), 'days');
+  var days_of_plant = plant.harvest_date.diff(plant.plant_date, 'days');
   var plant_percent = (days_of_plant / days_total) * 100.0;
 
   // Add the whitespace bar into the right spot.
@@ -172,11 +209,21 @@ function AddNewTimeBar(slot_idx, plant_idx) {
 
   var $progress = $($('#slot-bars .progress').get(slot_idx));
 
-  console.log(plant_idx, slot.length);
   if (plant_idx == 0 || plant_idx == slot.length - 1) {
-    $progress.append($whitespace_bar).append($plant_bar);
+    if (overwrite) {
+      $progress.find('.progress-bar').last().detach();
+      $progress.append($plant_bar);
+    } else {
+      $progress.append($whitespace_bar).append($plant_bar);
+    }
   } else if (plant_idx > 0) {
     var $previous_bar = $($progress.find('.progress-bar')[plant_idx * 2 - 1]);
+
+    if (overwrite) {
+      $previous_bar.next().detach();
+      $previous_bar.next().detach();
+    }
+
     var $following_bar = $previous_bar.next();
     $previous_bar.after($plant_bar).after($whitespace_bar);
     $following_bar.css('width', next_whitespace + '%');
@@ -233,52 +280,42 @@ function SowNewPlant($slot, plant) {
   var plant_date = moment(_VIEW_DATE);
   var harvest_date = moment(_VIEW_DATE).add(growth_time, 'days');
 
-  // If there is a plant being planted in this slot on the same day,
-  // then overwrite it.
-  var overwrote_plant = false;
+  // Construct the new plant.
+  var new_plant = {
+    name: plant.name,
+    plant_date: plant_date,
+    harvest_date: harvest_date,
+  };
+
+  // If there is something at that location already, mark it for deletion.
   var new_garden = $.extend(true, {}, _GARDEN);
-  var new_idx = new_garden.slots[slot_id].length;
-  $.each(new_garden.slots[slot_id], function(plant_idx, plant_to_overwrite) {
-    if (StringToDate(plant_to_overwrite.plant_date).isSame(plant_date)) {
-      overwrote_plant = true;
-      plant_to_overwrite.name = plant.name;
-      plant_to_overwrite.plant_date = DateToString(plant_date);
-      plant_to_overwrite.harvest_date = DateToString(harvest_date);
-      new_idx = plant_idx;
+  var items_to_remove = 0, new_idx = new_garden.slots[slot_id].length;
+  $.each(new_garden.slots[slot_id], function(i, plant) {
+    if (plant.plant_date.isSame(new_plant.plant_date)) {
+      items_to_remove++;
+      new_idx = i;
+      return false;
+    }
+
+    else if (plant.plant_date.isSameOrAfter(new_plant.harvest_date)) {
+      new_idx = i;
       return false;
     }
   });
 
-  if (!overwrote_plant) {
-    // Find the insertion point; it's the one just before the one which has a
-    // plant date after my harvest date.
-    $.each(new_garden.slots[slot_id], function(i, plant) {
-      if (StringToDate(plant.plant_date).isSameOrAfter(harvest_date)) {
-        new_idx = i;
-        return false;
-      }
-    });
-
-    var new_plant = {
-      name: plant.name,
-      plant_date: DateToString(plant_date),
-      harvest_date: DateToString(harvest_date),
-    };
-
-    new_garden.slots[slot_id].splice(new_idx, 0, new_plant);
-  }
+  new_garden.slots[slot_id].splice(new_idx, items_to_remove, new_plant);
 
   // Save the garden.
   $('#error').hide();
   $.ajax({
     url: '/api/garden/' + new_garden.name,
     type: 'PUT',
-    data: JSON.stringify(new_garden),
+    data: JSON.stringify(GardenToJson(new_garden)),
     contentType: 'application/json',
     success: function(resp) {
       _GARDEN = new_garden;
       UpdateSlots();
-      AddNewTimeBar(slot_id, new_idx);
+      AddNewTimeBar(slot_id, new_idx, items_to_remove > 0);
     },
 
     error: function(resp, status, error) {

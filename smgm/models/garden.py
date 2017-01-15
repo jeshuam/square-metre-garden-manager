@@ -169,7 +169,8 @@ class Garden(object):
                 p2 = slot[i+1]
 
                 if (p1.plant_date < p2.harvest_date and
-                    p1.harvest_date > p2.plant_date):
+                    p1.harvest_date > p2.plant_date and
+                    p1.plant_date != p2.plant_date):
                     return ('Plant "%s" (planted on %s) would overlap with "%s" '
                             '(planted on %s).') % (p1.name, p1.plant_date,
                                                    p2.name, p2.plant_date)
