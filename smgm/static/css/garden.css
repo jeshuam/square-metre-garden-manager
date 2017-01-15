@@ -99,6 +99,9 @@ div#slot-bars div.progress div.progress-bar {
      * other. */
     box-shadow: none;
     background-image: none;
+
+    /* Disable the transition, to avoid weirdness when calculating widths. */
+    transition: none;
 }
 
 /* Modified range slider styles. */

@@ -67,11 +67,13 @@ class Garden(object):
 
     def Serialize(self):
         """Serialize this object into a JSON dictionary."""
+        slots = []
+        for slot in self.slots:
+            slots.append([p.Serialize() 
+                          for p in sorted(slot, key=lambda p: p.plant_date)])
+
         return dict(
-            name=self.name,
-            width=self.width,
-            height=self.height,
-            slots=[[p.Serialize() for p in slot] for slot in self.slots])
+            name=self.name, width=self.width, height=self.height, slots=slots)
 
     def ProgressFor(self, slot_idx, plant_idx):
         """Get the progress bar widths for the space before and for some plant."""
