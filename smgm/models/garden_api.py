@@ -27,9 +27,9 @@ def post_garden():
     if not request:
         return jsonify(dict(error="No data provided")), 400
 
-    name = request.args.get('name', None)
-    width = request.args.get('width', None)
-    height = request.args.get('height', None)
+    name = request.json.get('name', None)
+    width = request.json.get('width', None)
+    height = request.json.get('height', None)
     if not name or not width or not height:
         missing_fields = []
         if not name: missing_fields.append('name')
@@ -70,8 +70,10 @@ def put_garden(name):
 @app.route('/api/garden/<string:name>', methods=['DELETE'])
 @login_required
 def delete_garden(name):
-    del user.custom_data['gardens'][name]
-    user.save()
+    if name in user.custom_data['gardens']:
+        del user.custom_data['gardens'][name]
+        user.save()
+
     return jsonify(dict(error=None)), 200
 
 

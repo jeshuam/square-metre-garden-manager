@@ -1,0 +1,55 @@
+{% extends "_common.html" %}
+
+{% block js %}
+
+<script type="text/javascript" src="{{ url_for('static', filename='js/garden_list.js') }}"></script>
+
+{% endblock %}
+
+{% block content %}
+
+<div class="row">
+    <div class="col-sml-3 col-lg-4"></div>
+    <div class="col-sml-4 col-lg-4">
+        <h1>Your Gardens</h1>
+        <div class="alert alert-danger" style="display:none;">
+            <span></span>
+        </div>
+        <div id="gardens">
+            {% for garden in gardens %}
+                <div class="garden">
+                    <div class="input-group">
+                        <span class="input-group-btn">
+                            <button class="btn btn-danger">
+                                <span class="glyphicon glyphicon-trash"></span>
+                            </button>
+                        </span>
+                        <button class="btn btn-success form-control">{{ garden.name }}</button>
+                    </div>
+                    <br />
+                </div>
+            {% endfor %}
+        </div>
+
+        <h1>Add New Garden</h1>
+        <form id="new-garden">
+            <div class="form-group">
+                <label for="name">Name</label>
+                <input type="text" class="form-control" name="name" />
+            </div>
+            <div class="form-group">
+                <label for="width">Width</label>
+                <input type="range" min="1" max="16" value="4" class="form-control" name="width" />
+                <output for="width">4</output>
+            </div>
+            <div class="form-group">
+                <label for="name">Height</label>
+                <input type="range" min="1" max="4" value="4" class="form-control" name="height" />
+                <output for="height">4</output>
+            </div>
+            <button type="submit" class="btn btn-success">Submit</button>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

@@ -17,7 +17,7 @@ def index():
 def gardens():
     gardens_json = user.custom_data.get('gardens', {})
     gardens = [garden for garden in gardens_json.values()]
-    return render_template('gardens.html',
+    return render_template('garden_list.html',
                            gardens=sorted(gardens, key=lambda g: g['name']))
 
 
